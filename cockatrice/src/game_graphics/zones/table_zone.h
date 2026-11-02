@@ -11,7 +11,6 @@
 #include "../card_dimensions.h"
 #include "select_zone.h"
 
-#include <QColor>
 #include <QElapsedTimer>
 #include <QMap>
 #include <QPixmap>
@@ -48,10 +47,10 @@ private:
     */
     static const int MARGIN_LEFT = 20;
     static const int MARGIN_RIGHT = 15;
-    static const int MARGIN_TOP = 30; // Space for zone labels.
-    static const int MARGIN_BOTTOM = 26;
+    static const int MARGIN_TOP = 10;
+    static const int MARGIN_BOTTOM = 30;
     static const int PADDING_X = 35;
-    static const int PADDING_Y = 50;
+    static const int PADDING_Y = 30;
 
     /*
     Minimum width of the table zone including margins.
@@ -62,7 +61,7 @@ private:
     Offset sizes when cards are stacked on each other in the grid
     */
     static const int STACKED_CARD_OFFSET_X = CardDimensions::WIDTH / 3;
-    static const int STACKED_CARD_OFFSET_Y = 8; // Avoid covering the next zone label.
+    static const int STACKED_CARD_OFFSET_Y = PADDING_Y / 3;
 
     /*
     Width of the box line drawn in the margin around the active player's area
@@ -100,11 +99,6 @@ private:
     bool active = false;
     bool mirrored = false;
     bool playmatActive = false;
-
-    QColor frontZoneColor;
-    QColor supportZoneColor;
-    QColor commandZoneColor;
-    QString zoneLabelFontFamily;
 
     [[nodiscard]] bool isInverted() const;
 
@@ -226,8 +220,7 @@ private:
     qreal damageShimmerAlpha = 0.0;
 
     void paintZoneOutline(QPainter *painter);
-    void paintBattlefieldRows(QPainter *painter);
-    void reloadBattlefieldAppearance();
+    void paintLandDivider(QPainter *painter);
 
     /*
     Calculates card stack widths so mapping functions work properly

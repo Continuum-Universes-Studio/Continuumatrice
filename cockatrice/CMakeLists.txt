@@ -107,6 +107,7 @@ set(cockatrice_SOURCES
     src/game_graphics/tally/stats_tally.cpp
     src/game_graphics/tally/subtype_tally.cpp
     src/game_graphics/tally/tally.cpp
+    src/game_graphics/player/essence_pool_item.cpp
     src/game_graphics/player/player_area.cpp
     src/game_graphics/player/player_dialogs.cpp
     src/game_graphics/player/player_graphics_item.cpp
@@ -157,6 +158,7 @@ set(cockatrice_SOURCES
     src/interface/palette_editor/palette_editor_dialog.cpp
     src/interface/widgets/cards/additional_info/color_identity_widget.cpp
     src/interface/widgets/cards/additional_info/deck_color_identity.cpp
+    src/interface/widgets/cards/additional_info/essence_filter_picker.cpp
     src/interface/widgets/cards/additional_info/mana_cost_widget.cpp
     src/interface/widgets/cards/additional_info/mana_symbol_widget.cpp
     src/interface/widgets/cards/art_crop_attribution.cpp
@@ -295,8 +297,8 @@ set(cockatrice_SOURCES
     src/interface/widgets/visual_database_display/visual_database_display_color_filter_widget.cpp
     src/interface/widgets/visual_database_display/visual_database_display_filter_save_load_widget.cpp
     src/interface/widgets/visual_database_display/visual_database_display_filter_toolbar_widget.cpp
-    src/interface/widgets/visual_database_display/visual_database_display_format_legality_filter_widget.cpp
     src/interface/widgets/visual_database_display/visual_database_display_gender_filter_widget.cpp
+    src/interface/widgets/visual_database_display/visual_database_display_format_legality_filter_widget.cpp
     src/interface/widgets/visual_database_display/visual_database_display_main_type_filter_widget.cpp
     src/interface/widgets/visual_database_display/visual_database_display_name_filter_widget.cpp
     src/interface/widgets/visual_database_display/visual_database_display_set_filter_widget.cpp
@@ -584,10 +586,8 @@ if(UNIX)
     install(TARGETS continuumatrice RUNTIME DESTINATION bin/)
     # Install using distinct names so the normal MTG client keeps its .desktop,
     # icon and .cod / cockatrice:// file associations unchanged.
-    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/resources/cockatrice.png
-            DESTINATION ${ICONDIR}/hicolor/48x48/apps RENAME continuumatrice.png)
-    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/resources/cockatrice.svg
-            DESTINATION ${ICONDIR}/hicolor/scalable/apps RENAME continuumatrice.svg)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/resources/continuumatrice.svg
+            DESTINATION ${ICONDIR}/hicolor/scalable/apps)
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/continuumatrice.desktop DESTINATION ${DESKTOPDIR})
 
     # Refresh the freedesktop databases so the file associations and scheme

@@ -13,6 +13,26 @@
 #include <libcockatrice/card/essence_types.h>
 #include <libcockatrice/filters/filter_tree.h>
 
+namespace
+{
+
+/** @brief Remove the filters that apply to the given color and attribute from the given model. */
+static void removeFilters(FilterTreeModel *filterModel, QChar color, CardFilter::Attr attr)
+{
+    for (const CardFilter *filter : filterModel->getFiltersOfType(attr)) {
+        if (filter->term() == color) {
+            filterModel->removeFilter(filter);
+        }
+    }
+}
+} // namespace
+
+/**
+ * This widget provides a graphical control element for the CardFilter::Attr::AttrColor and
+ * CardFilter::Attr::AttrColorIdentity filters applied to the filter model.
+ * @param parent The Qt Widget that this widget will parent to
+ * @param _filterModel The filter model that this widget will manipulate
+ */
 VisualDatabaseDisplayColorFilterWidget::VisualDatabaseDisplayColorFilterWidget(QWidget *parent,
                                                                                FilterTreeModel *_filterModel)
     : QWidget(parent), filterModel(_filterModel), layout(new QHBoxLayout(this))
@@ -35,6 +55,7 @@ VisualDatabaseDisplayColorFilterWidget::VisualDatabaseDisplayColorFilterWidget(Q
 
     connect(essencePicker, &EssenceFilterPicker::selectionCleared, this, [this]() {
         filterModel->clearFiltersOfType(CardFilter::Attr::AttrColor);
+        filterModel->clearFiltersOfType(CardFilter::Attr::AttrColorIdentity);
     });
 
     modeComboBox = new QComboBox(this);
@@ -56,16 +77,55 @@ void VisualDatabaseDisplayColorFilterWidget::retranslateUi()
 
     modeComboBox->blockSignals(true);
     modeComboBox->clear();
-    modeComboBox->addItem(tr("Exact match"), QVariant::fromValue(FilterMode::ExactMatch));
     modeComboBox->addItem(tr("Includes"), QVariant::fromValue(FilterMode::Includes));
+    modeComboBox->addItem(tr("Excludes"), QVariant::fromValue(FilterMode::Excludes));
     modeComboBox->addItem(tr("Include / Exclude"), QVariant::fromValue(FilterMode::IncludeExclude));
     modeComboBox->setToolTip(tr("How selected and unselected Essence types are combined in the filter"));
 
+    modeComboBox->addItem(tr("Exact match"), QVariant::fromValue(FilterMode::ExactMatch));
+    modeComboBox->addItem(tr("Essence identity"), QVariant::fromValue(FilterMode::ColorIdentity));
+
+    modeComboBox->setItemData(0, tr("Cards containing any of the selected Essences"), Qt::ToolTipRole);
+    modeComboBox->setItemData(1, tr("Cards containing none of the selected Essences"), Qt::ToolTipRole);
+    modeComboBox->setItemData(2, tr("Cards containing any of the selected Essences and none of the unselected Essences"),
+                              Qt::ToolTipRole);
+    modeComboBox->setItemData(3, tr("Cards having exactly the selected Essences"), Qt::ToolTipRole);
+    modeComboBox->setItemData(4, tr("Cards whose Essence identity contains only the selected Essences"), Qt::ToolTipRole);
+
+    if (currentMode == FilterMode::Custom) {
+        addCustomFilterModeItem();
+    }
+
+    modeComboBox->setAccessibleName(tr("Essence filter mode"));
+
+    // Restore current mode
     const int index = modeComboBox->findData(QVariant::fromValue(currentMode));
     if (index >= 0) {
         modeComboBox->setCurrentIndex(index);
     }
     modeComboBox->blockSignals(false);
+}
+
+void VisualDatabaseDisplayColorFilterWidget::setFilterMode(FilterMode filterMode)
+{
+    int index = modeComboBox->findData(QVariant::fromValue(filterMode));
+
+    if (index < 0 && filterMode == FilterMode::Custom) {
+        index = modeComboBox->count();
+        addCustomFilterModeItem();
+    }
+
+    if (index >= 0) {
+        modeComboBox->setCurrentIndex(index);
+    }
+}
+
+void VisualDatabaseDisplayColorFilterWidget::addCustomFilterModeItem()
+{
+    int customIndex = modeComboBox->count();
+    modeComboBox->addItem(tr("Custom"), QVariant::fromValue(FilterMode::Custom));
+    modeComboBox->setItemData(customIndex, tr("Cards matching an unknown combination of Essence filters"),
+                              Qt::ToolTipRole);
 }
 
 void VisualDatabaseDisplayColorFilterWidget::handleColorToggled(QChar essence, bool active)
@@ -79,51 +139,31 @@ void VisualDatabaseDisplayColorFilterWidget::handleColorToggled(QChar essence, b
 
 void VisualDatabaseDisplayColorFilterWidget::addFilter(QChar essence)
 {
-    QString essenceString(essence);
-    const QList<const CardFilter *> filters = filterModel->getFiltersOfType(CardFilter::Attr::AttrColor);
-    for (const CardFilter *filter : filters) {
-        if (filter->term() == essenceString) {
-            filterModel->removeFilter(filter);
-        }
-    }
+    FilterModeInfo info = getFilterModeInfo(currentMode);
 
-    switch (currentMode) {
-        case FilterMode::ExactMatch:
-            filterModel->addFilter(
-                new CardFilter(essenceString, CardFilter::Type::TypeAnd, CardFilter::Attr::AttrColor));
-            break;
-        case FilterMode::Includes:
-        case FilterMode::IncludeExclude:
-            filterModel->addFilter(
-                new CardFilter(essenceString, CardFilter::Type::TypeOr, CardFilter::Attr::AttrColor));
-            break;
+    removeFilters(filterModel, essence, info.attr);
+
+    if (info.includeType != CardFilter::Type::TypeEnd) {
+        filterModel->addFilter(new CardFilter(essence, info.includeType, info.attr));
     }
 }
 
 void VisualDatabaseDisplayColorFilterWidget::removeFilter(QChar essence)
 {
-    QString essenceString(essence);
-    const QList<const CardFilter *> filters = filterModel->getFiltersOfType(CardFilter::Attr::AttrColor);
-    for (const CardFilter *filter : filters) {
-        if (filter->term() == essenceString) {
-            filterModel->removeFilter(filter);
-        }
-    }
+    FilterModeInfo info = getFilterModeInfo(currentMode);
 
-    // The empty selection means "Any Essence", not "exclude everything".
+    removeFilters(filterModel, essence, info.attr);
+
+    // An empty picker means any Essence, including in modes that otherwise exclude unselected types.
     if (essencePicker->activeEssences().isEmpty()) {
         filterModel->clearFiltersOfType(CardFilter::Attr::AttrColor);
+        filterModel->clearFiltersOfType(CardFilter::Attr::AttrColorIdentity);
         return;
     }
 
-    switch (currentMode) {
-        case FilterMode::ExactMatch:
-        case FilterMode::IncludeExclude:
-            filterModel->addFilter(
-                new CardFilter(essenceString, CardFilter::Type::TypeAndNot, CardFilter::Attr::AttrColor));
-            break;
-        case FilterMode::Includes:
-            break;
+    // Add exclusion filters if the mode demands it.
+    if (info.excludeType != CardFilter::Type::TypeEnd) {
+        filterModel->addFilter(new CardFilter(essence, info.excludeType, info.attr));
     }
 }
 
@@ -140,6 +180,7 @@ void VisualDatabaseDisplayColorFilterWidget::updateFilterMode()
     filterModel->filterTree()->blockSignals(true);
 
     filterModel->clearFiltersOfType(CardFilter::Attr::AttrColor);
+    filterModel->clearFiltersOfType(CardFilter::Attr::AttrColorIdentity);
 
     const QSet<QChar> selected = essencePicker->activeEssences();
     // No selections should never generate 15 mutually excluding filters.
@@ -176,25 +217,53 @@ QList<QChar> VisualDatabaseDisplayColorFilterWidget::getActiveColors()
 
 void VisualDatabaseDisplayColorFilterWidget::syncWithFilterModel()
 {
-    const QList<const CardFilter *> filters = filterModel->getFiltersOfType(CardFilter::Attr::AttrColor);
+    QList<const CardFilter *> filters;
+    filters.append(filterModel->getFiltersOfType(CardFilter::Attr::AttrColor));
+    filters.append(filterModel->getFiltersOfType(CardFilter::Attr::AttrColorIdentity));
+
+    // Re-derive the mode from the filters in the model, so that a loaded filter set selects the mode that
+    // produced it (or Custom when none could have).
+    currentMode = deriveFilterMode(filters, currentMode);
+
+    // Update the combobox. Add a Custom item only if we have a custom filter mode.
+    int customIndex = modeComboBox->findData(QVariant::fromValue(FilterMode::Custom));
+    modeComboBox->blockSignals(true);
+    if (currentMode == FilterMode::Custom) {
+        if (customIndex < 0) {
+            customIndex = modeComboBox->count();
+            addCustomFilterModeItem();
+        }
+        modeComboBox->setCurrentIndex(customIndex);
+    } else {
+        if (customIndex >= 0) {
+            modeComboBox->removeItem(customIndex);
+        }
+        int index = modeComboBox->findData(QVariant::fromValue(currentMode));
+        if (index >= 0) {
+            modeComboBox->setCurrentIndex(index);
+        }
+    }
+    modeComboBox->blockSignals(false);
+
+    // Restore the compact Essence picker without changing the filter model.
+    const FilterModeInfo modeInfo = getFilterModeInfo(currentMode);
+
+    const bool useExclude =
+        modeInfo.includeType == CardFilter::Type::TypeEnd && modeInfo.excludeType != CardFilter::Type::TypeEnd;
+    const CardFilter::Type filterType = useExclude ? modeInfo.excludeType : modeInfo.includeType;
+
+    filters = filterModel->getFiltersOfType(modeInfo.attr);
 
     for (const QChar essence : Essence::symbols()) {
-        bool selected = false;
+        bool found = false;
         for (const CardFilter *filter : filters) {
-            if (filter->term() != QString(essence)) {
-                continue;
-            }
-            if (currentMode == FilterMode::ExactMatch) {
-                selected = filter->type() == CardFilter::Type::TypeAnd;
-            } else {
-                selected = filter->type() == CardFilter::Type::TypeOr;
-            }
-            if (selected) {
+            if (filter->type() == filterType && essence == filter->term()) {
+                found = true;
                 break;
             }
         }
-        // Signals are blocked inside the picker; loading saved filters must
-        // not mutate the FilterTreeModel again.
-        setEssenceActive(essence, selected);
+
+        setEssenceActive(essence, !filters.isEmpty() && (useExclude ? !found : found));
     }
+    essencePicker->setEnabled(currentMode != FilterMode::Custom);
 }

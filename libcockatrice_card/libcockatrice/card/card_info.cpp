@@ -334,6 +334,11 @@ void CardInfo::setColors(const QString &value)
 {
     setProperty(EssenceProperties::Types, Essence::normalizeIdentity(value));
 }
+QString CardInfo::getColorIdentity() const
+{
+    return hasProperty(Mtg::ColorIdentity) ? Essence::normalizeIdentity(getProperty(Mtg::ColorIdentity))
+                                           : getEssenceTypes();
+}
 QString CardInfo::getLoyalty() const
 {
     return getProperty(Mtg::Loyalty);

@@ -23,6 +23,8 @@ if(WITH_ORACLE)
 endif()
 # Compile Servatrice
 option(WITH_SERVER "Build Continuum-Servatrice dedicated multiplayer server" ON)
+# Compile GUI tests (QtTesting widget-level playback)
+option(WITH_GUI_TEST "Build the QtTesting-based GUI test harness" OFF)
 # Compile tests
 option(TEST "Build tests" OFF)
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
@@ -31,6 +33,14 @@ option(ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanit
 option(ENABLE_COVERAGE "Build instrumented for GCC line coverage" OFF)
 # Use vcpkg regardless of OS
 option(USE_VCPKG "Use vcpkg regardless of OS" OFF)
+
+# The GUI test harness lives in a submodule; a checkout without it must still configure.
+if(WITH_GUI_TEST AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/qttesting/CMakeLists.txt")
+  message(WARNING "WITH_GUI_TEST is ON but external/qttesting is missing, so GUI tests are disabled.\n"
+                  "Run 'git submodule update --init external/qttesting' to enable them."
+  )
+  set(WITH_GUI_TEST OFF)
+endif()
 
 # Default to "Release" build type
 # User-provided value for CMAKE_BUILD_TYPE must be checked before the PROJECT() call
@@ -58,6 +68,10 @@ if(USE_CCACHE AND NOT WIN32)
     # PCH-aware caching, matching .ci/compile.sh: without this ccache refuses
     # to cache any TU that consumes a precompiled header, so every PCH-backed
     # target recompiles from scratch on each build.
+    # The include_file_mtime/include_file_ctime entries that CI also sets are
+    # deliberately not set here: --set-config writes the user's global
+    # ccache.conf, and those two would turn off the modified-during-compile
+    # check for every project on the machine, not just this one.
     execute_process(COMMAND ${CCACHE_PROGRAM} --set-config sloppiness=pch_defines,time_macros)
     message(STATUS "Found CCache ${CCACHE_PROGRAM}")
   endif()
@@ -226,6 +240,27 @@ endif()
 include(Sanitizers)
 include(Coverage)
 include(CrashReporting)
+
+# Debug information is what makes a cached object large, and a build configuration needs more
+# room than a per-leg cache bound can spare when it carries full DWARF: ccache then fills to
+# its limit and evicts the entries the next build is about to ask for, so it serves a few
+# percent of calls while holding most of a build. CI sets a lower level so one whole
+# configuration fits; level 1 keeps file and line, which is what a failing test or a sanitizer
+# backtrace reports. Empty (the default) leaves local, distro and release builds exactly as
+# they were. This comes after CrashReporting, so the -g it adds for Sentry symbols cannot
+# raise the level again.
+set(COCKATRICE_DEBUG_INFO_LEVEL
+    ""
+    CACHE STRING "DWARF level for Debug and Release objects (empty keeps the built-in flags)"
+)
+if(NOT COCKATRICE_DEBUG_INFO_LEVEL STREQUAL "")
+  if(MSVC)
+    message(WARNING "COCKATRICE_DEBUG_INFO_LEVEL is ignored on MSVC")
+  else()
+    string(APPEND CMAKE_CXX_FLAGS_DEBUG " -g${COCKATRICE_DEBUG_INFO_LEVEL}")
+    string(APPEND CMAKE_CXX_FLAGS_RELEASE " -g${COCKATRICE_DEBUG_INFO_LEVEL}")
+  endif()
+endif()
 
 # GNU systems need to define the Mersenne exponent for the RNG to compile w/o warning
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -467,6 +502,34 @@ endif()
 if(WITH_ORACLE)
   add_subdirectory(oracle)
   set(CPACK_INSTALL_CMAKE_PROJECTS "Oracle;Oracle;ALL;/" ${CPACK_INSTALL_CMAKE_PROJECTS})
+endif()
+
+if(WITH_GUI_TEST)
+  set(QtTesting_QT_VERSION "6")
+  # QtTesting registers its own unit tests when BUILD_TESTING is on. They target the
+  # Qt version the harness was written for and fail on Qt 6.11 (toolbutton
+  # long-press recording), and they are not Cockatrice's tests, so suppress them
+  # for the duration of the subdirectory instead of painting ctest red.
+  if(DEFINED BUILD_TESTING)
+    set(_cockatrice_saved_build_testing ${BUILD_TESTING})
+  endif()
+  set(BUILD_TESTING
+      OFF
+      CACHE BOOL "Build the testing tree." FORCE
+  )
+  add_subdirectory(external/qttesting)
+  if(DEFINED _cockatrice_saved_build_testing)
+    set(BUILD_TESTING
+        ${_cockatrice_saved_build_testing}
+        CACHE BOOL "Build the testing tree." FORCE
+    )
+  else()
+    unset(BUILD_TESTING CACHE)
+  endif()
+  # cl.exe has no warnings-as-errors here, and it rejects -Wno-error with D8021.
+  if(NOT MSVC)
+    target_compile_options(qttesting PRIVATE -Wno-error)
+  endif()
 endif()
 
 if(TEST)

@@ -177,7 +177,8 @@ FilterItem::FilterItem(QString trm, FilterItemList *parent) : p(parent), term(st
     lowercaseTerm = term.toLower();
 
     switch (attr()) {
-        case CardFilter::AttrColor: {
+        case CardFilter::AttrColor:
+        case CardFilter::AttrColorIdentity: {
             // The old MTG color-name conversions are invalid for Essence.
             // N is explicitly colorless; an unspecified identity is not N.
             QString converted = term.trimmed().toUpper();
@@ -358,18 +359,27 @@ bool FilterItem::acceptGender(const CardInfoPtr &info) const
     return info->getProperty(QStringLiteral("gender")).trimmed().compare(term.trimmed(), Qt::CaseInsensitive) == 0;
 }
 
-bool FilterItem::acceptColor(const CardInfoPtr &info) const
+static bool matchesEssence(const QString &term, const QString &identity)
 {
-    if (convertedColorTerm.isEmpty()) {
+    if (term.isEmpty()) {
         return false;
     }
-    const QString essence = info->getEssenceTypes();
-    for (const QChar code : convertedColorTerm) {
-        if (!Essence::isSymbol(code) || !essence.contains(code)) {
+    for (const QChar code : term) {
+        if (!Essence::isSymbol(code) || !identity.contains(code)) {
             return false;
         }
     }
     return true;
+}
+
+bool FilterItem::acceptColor(const CardInfoPtr &info) const
+{
+    return matchesEssence(convertedColorTerm, info->getEssenceTypes());
+}
+
+bool FilterItem::acceptColorIdentity(const CardInfoPtr &info) const
+{
+    return matchesEssence(convertedColorTerm, info->getColorIdentity());
 }
 
 bool FilterItem::acceptText(const CardInfoPtr &info, const CardSearchLanguage &searchLanguage) const
@@ -530,6 +540,8 @@ bool FilterItem::acceptCardAttr(const CardInfoPtr &info,
             return acceptType(info);
         case CardFilter::AttrColor:
             return acceptColor(info);
+        case CardFilter::AttrColorIdentity:
+            return acceptColorIdentity(info);
         case CardFilter::AttrText:
             return acceptText(info, searchLanguage);
         case CardFilter::AttrSet:

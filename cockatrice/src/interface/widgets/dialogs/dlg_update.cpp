@@ -42,6 +42,7 @@ static const QString UPDATE_INSTALLER_OVERRIDE = "Continuumatrice-Update-Overrid
 
 DlgUpdate::DlgUpdate(QWidget *parent) : QDialog(parent)
 {
+    setObjectName("updateDialog");
 
     // Handle layout
     statusLabel = new QLabel(this);

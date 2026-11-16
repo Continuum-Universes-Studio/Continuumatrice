@@ -16,16 +16,24 @@ inline const QString &symbols()
     return value;
 }
 
+// P was the previous code for this Essence. Normalize it at the boundary so
+// old snapshots/replays remain readable while all new state uses D.
+inline QChar canonicalSymbol(QChar code)
+{
+    const QChar uppercase = code.toUpper();
+    return uppercase == QChar('P') ? QChar('D') : uppercase;
+}
+
 inline bool isSymbol(QChar code)
 {
-    return symbols().contains(code);
+    return symbols().contains(canonicalSymbol(code));
 }
 
 // Names are serialized by Cockatrice's existing ServerInfo_Counter protocol.
 // Keep these stable for replays, game snapshots, and reconnects.
 inline QString name(QChar code)
 {
-    return isSymbol(code) ? QStringLiteral("essence:") + code : QString();
+    return isSymbol(code) ? QStringLiteral("essence:") + canonicalSymbol(code) : QString();
 }
 
 inline QChar codeFromName(const QString &counterName)
@@ -35,7 +43,7 @@ inline QChar codeFromName(const QString &counterName)
         !counterName.startsWith(QStringLiteral("essence:"))) {
         return QChar();
     }
-    const QChar code = counterName.at(prefixSize);
+    const QChar code = canonicalSymbol(counterName.at(prefixSize));
     return isSymbol(code) ? code : QChar();
 }
 

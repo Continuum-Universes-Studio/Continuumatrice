@@ -26,7 +26,8 @@ inline bool isSymbol(const QChar symbol)
 // is a list of distinct codes, NOT a derived resource cost or mana color.
 inline QString normalizeIdentity(const QString &input)
 {
-    const QString uppercase = input.toUpper();
+    // Legacy card data using P is migrated to the new canonical symbol D.
+    const QString uppercase = input.toUpper().replace(QChar('P'), QChar('D'));
     QString normalized;
     for (const QChar code : symbols()) {
         if (uppercase.contains(code)) {
@@ -41,7 +42,7 @@ inline QString normalizeIdentity(const QString &input)
 // Hybrid/phrexian/other MTG-specific syntax is NOT defined as Essence.
 inline QStringList parseCost(const QString &cost)
 {
-    static const QRegularExpression regex(QStringLiteral(R"(\{([^}]+)\}|(\d+)|([MSOGEAQCJBRLVTPN]))"));
+    static const QRegularExpression regex(QStringLiteral(R"(\{([^}]+)\}|(\d+)|([MSOGEAQCJBRLVTDPN]))"));
     QStringList result;
     auto matches = regex.globalMatch(cost);
     while (matches.hasNext()) {
@@ -49,7 +50,7 @@ inline QStringList parseCost(const QString &cost)
         if (!match.captured(1).isEmpty()) {
             const QString token = match.captured(1);
             if (token.size() == 1 && isSymbol(token.at(0))) {
-                result.append(token);
+                result.append(QString(EssenceCounter::canonicalSymbol(token.at(0))));
             } else {
                 // Numeric quantities may also be written in braces: {2}{N}.
                 bool isNumber = !token.isEmpty();
@@ -66,7 +67,7 @@ inline QStringList parseCost(const QString &cost)
         } else if (!match.captured(2).isEmpty()) {
             result.append(match.captured(2));
         } else if (!match.captured(3).isEmpty()) {
-            result.append(match.captured(3));
+            result.append(QString(EssenceCounter::canonicalSymbol(match.captured(3).at(0))));
         }
     }
     return result;

@@ -3,10 +3,10 @@
 Continuumatrice matches provide **16 independent Essence balances per player**, using the canonical sequence:
 
 ```text
-M S O G E A Q C J B R L V T P N
+M S O G E A Q C J B R L V T D N
 ```
 
-**J** is Jasper; **N** is colorless. These are not Magic mana colors, and Essence is not primarily obtained by drawing land cards.
+**J** is Jasper; **N** is colorless. D replaces the former P code. Old replay/snapshot counter names using `essence:P` are interpreted as D; new match state writes `essence:D`. These are not Magic mana colors, and Essence is not primarily obtained by drawing land cards.
 
 ## Behavior
 

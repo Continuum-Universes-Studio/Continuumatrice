@@ -8,10 +8,12 @@
 
 TEST(EssenceTypesTest, HasExactlySixteenCanonicalSymbols)
 {
-    EXPECT_EQ(Essence::symbols(), QStringLiteral("MSOGEAQCJBRLVTPN"));
+    EXPECT_EQ(Essence::symbols(), QStringLiteral("MSOGEAQCJBRLVTDN"));
     EXPECT_EQ(Essence::symbols().size(), 16);
     EXPECT_TRUE(Essence::isSymbol(QChar('N'))); // N is colorless.
     EXPECT_TRUE(Essence::isSymbol(QChar('J'))); // J is Jasper, between C and B.
+    EXPECT_TRUE(Essence::isSymbol(QChar('D')));
+    EXPECT_TRUE(Essence::isSymbol(QChar('P'))); // Legacy P aliases to D.
     EXPECT_FALSE(Essence::isSymbol(QChar('W'))); // MTG white is not Essence.
     EXPECT_FALSE(Essence::isSymbol(QChar('U'))); // MTG blue is not Essence.
 }
@@ -29,6 +31,8 @@ TEST(EssenceTypesTest, NetworkCounterNamesHaveStableRoundTrip)
     }
     EXPECT_EQ(position, 17);
     EXPECT_TRUE(EssenceCounter::name(QChar('W')).isEmpty());
+    EXPECT_EQ(EssenceCounter::name(QChar('P')), QStringLiteral("essence:D"));
+    EXPECT_EQ(EssenceCounter::codeFromName(QStringLiteral("essence:P")), QChar('D'));
     EXPECT_FALSE(EssenceCounter::isEssenceCounter(QStringLiteral("essence:W")));
     EXPECT_FALSE(EssenceCounter::isEssenceCounter(QStringLiteral("essence:MM")));
     EXPECT_FALSE(EssenceCounter::isEssenceCounter(QStringLiteral("life")));
@@ -40,10 +44,11 @@ TEST(EssenceTypesTest, NetworkCounterNamesHaveStableRoundTrip)
 
 TEST(EssenceTypesTest, ParsesAllBracedAndUnbracedTypes)
 {
-    const QString raw = QStringLiteral("{M}{S}{O}{G}{E}{A}{Q}{C}{J}{B}{R}{L}{V}{T}{P}{N}");
+    const QString raw = QStringLiteral("{M}{S}{O}{G}{E}{A}{Q}{C}{J}{B}{R}{L}{V}{T}{D}{N}");
     EXPECT_EQ(Essence::parseCost(raw).join(QString()), Essence::symbols());
     EXPECT_EQ(Essence::parseCost(QStringLiteral("MSN")).join(QString()), QStringLiteral("MSN"));
     EXPECT_EQ(Essence::parseCost(QStringLiteral("{C}{J}{B}{N}")).join(QString()), QStringLiteral("CJBN"));
+    EXPECT_EQ(Essence::parseCost(QStringLiteral("{P}P")).join(QString()), QStringLiteral("DD"));
     EXPECT_EQ(Essence::parseCost(QStringLiteral("{2}{N}{M}")).join(QStringLiteral("|")),
               QStringLiteral("2|N|M"));
 }
@@ -57,6 +62,7 @@ TEST(EssenceTypesTest, RejectsUnknownLegacyAndHybridCodes)
 TEST(EssenceTypesTest, NormalizesUniqueIdentityInCanonicalOrder)
 {
     EXPECT_EQ(Essence::normalizeIdentity(QStringLiteral("NSSMMO")), QStringLiteral("MSON"));
+    EXPECT_EQ(Essence::normalizeIdentity(QStringLiteral("NP")), QStringLiteral("DN"));
     EXPECT_EQ(Essence::normalizeIdentity(QStringLiteral("N")), QStringLiteral("N"));
     EXPECT_EQ(Essence::normalizeIdentity(QStringLiteral("BJNJC")), QStringLiteral("CJBN"));
     EXPECT_EQ(Essence::normalizeIdentity(QStringLiteral("WU")), QString());

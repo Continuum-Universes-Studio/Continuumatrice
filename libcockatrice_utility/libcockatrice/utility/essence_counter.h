@@ -12,7 +12,7 @@ namespace EssenceCounter
 // This is a protocol identity list, not a definition of gameplay generation.
 inline const QString &symbols()
 {
-    static const QString value = QStringLiteral("MSOGEAQCJBRLVTPN");
+    static const QString value = QStringLiteral("MSOGEAQCJBRLVTDN");
     return value;
 }
 

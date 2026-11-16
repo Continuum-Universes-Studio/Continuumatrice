@@ -3,10 +3,10 @@
 Continuumatrice uses **Essence** for card resources, not Magic: The Gathering mana. The canonical Essence symbol order is:
 
 ```text
-M S O G E A Q C J B R L V T P N
+M S O G E A Q C J B R L V T D N
 ```
 
-These are **16 distinct symbols**. `N` is explicitly **colorless Essence**. The non-colorless codes use the existing MSE gemstone mappings (including **J = Jasper**), but the client does not assign their final artwork, gameplay rules or resource behavior. Do not infer anything from similarly named MTG mana letters. All Essence codes are uppercase.
+These are **16 distinct symbols**. `N` is explicitly **colorless Essence**. The non-colorless codes use the existing MSE gemstone mappings (including **J = Jasper**), but the client does not assign their final artwork, gameplay rules or resource behavior. **D replaces the former P code**; legacy card data using P is normalized to D. Do not infer anything from similarly named MTG mana letters. All Essence codes are uppercase.
 
 ## Native Continuumatrice XML v4
 
@@ -48,12 +48,12 @@ Previously authored XML `<manacost>`, `<colors>`, and `<cmc>` properties remain 
 
 ## Icons and custom asset assignment
 
-All 16 Essence letters have small bundled SVG **placeholder** icons under:
+All 16 Essence letters have small bundled SVG icons under:
 
 ```text
 cockatrice/resources/icons/essence/
   M.svg S.svg O.svg G.svg E.svg A.svg Q.svg C.svg J.svg B.svg
-  R.svg L.svg V.svg T.svg P.svg N.svg
+  R.svg L.svg V.svg T.svg D.svg N.svg
 ```
 
 Each is rendered using an independent `icons/essence/` asset namespace. In the currently selected Continuumatrice theme you may override any SVG with an SVG, PNG, JPG or JPEG using the same stem:
@@ -65,7 +65,7 @@ Each is rendered using an independent `icons/essence/` asset namespace. In the c
     N.svg
 ```
 
-The current bundled placeholders show just the letter. **J = Jasper** (matching the existing Continuum MSE authoring templates). `N` is neutral gray; the others use a shared neutral treatment. They are **not** final Essence artwork or a commitment to elemental color assignments. The chart interface uses a separately generated *chart-only* palette so sixteen statistical series can be distinguished.
+The bundled icon formerly stored as P is now exposed under D. **J = Jasper** (matching the existing Continuum MSE authoring templates). `N` is neutral gray; the others use a shared neutral treatment. They are **not** final Essence artwork or a commitment to elemental color assignments. The chart interface uses a separately generated *chart-only* palette so sixteen statistical series can be distinguished.
 
 ## Features updated
 
